@@ -41,6 +41,9 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: python3 update_us_news.py
 
+      - name: Cross-check prices against Yahoo Finance
+        run: python3 validate_prices.py
+
       - name: Send daily digest email
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
