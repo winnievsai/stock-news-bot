@@ -237,6 +237,15 @@ def send_via_resend(api_key: str, email_from: str, email_to: str, subject: str, 
         sys.exit(f"[錯誤] Resend 寄信失敗（{resp.status_code}）：{resp.text[:300]}")
 
 
+def load_price_validation_warning() -> str:
+    """如果 validate_prices.py 有發現價格異常/資料不同步，讀出來放進信件開頭"""
+    report_path = SCRIPT_DIR / "price_validation_report.txt"
+    if not report_path.exists():
+        return ""
+    content = report_path.read_text(encoding="utf-8").strip()
+    return f"⚠️ 股價核對提醒\n{content}\n\n" if content else ""
+
+
 def main():
     (
         resend_api_key, email_from, email_to,
@@ -246,11 +255,12 @@ def main():
     us_stocks = load_stock_list(us_stock_list_file)
     today = date.today().isoformat()
 
+    price_warning = load_price_validation_warning()
     tw_body, tw_total = build_news_section("台股新聞", stocks, news_dir, today, max_per_stock, TW_CREDIBLE_SOURCES, translate=False)
     print("翻譯美股新聞標題...")
     us_body, us_total = build_news_section("美股新聞", us_stocks, us_news_dir, today, max_per_stock, US_CREDIBLE_SOURCES, translate=True)
 
-    body = f"股票新聞日報 - {today}\n\n{tw_body}\n{us_body}"
+    body = f"股票新聞日報 - {today}\n\n{price_warning}{tw_body}\n{us_body}"
     subject = f"股票新聞日報 {today}（台股 {tw_total} 則 / 美股 {us_total} 則）"
 
     print(f"寄送對象：{email_to}，台股 {tw_total} 則、美股 {us_total} 則")

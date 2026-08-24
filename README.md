@@ -6,6 +6,7 @@
 - `update_news.py`　抓「個股新聞」的程式，用法跟 `update_finmind.py` 一樣（見下方「抓取個股新聞」）
 - `update_us_stock.py`　抓「美股股價」的程式（見下方「抓取美股股價」）
 - `update_us_news.py`　抓「美股新聞」的程式（見下方「抓取美股新聞」）
+- `validate_prices.py`　拿 Yahoo Finance 的股價交叉核對本地資料（見下方「股價交叉比對」）
 - `send_news_email.py`　把當天新抓到的新聞寄成一封 email（見下方「每日新聞 Email」）
 - `stock_list.txt`　你要追蹤的**台股**代碼清單，一行一個（`update_finmind.py`、`update_news.py` 共用）
 - `us_stock_list.txt`　你要追蹤的**美股**代碼清單，一行一個（`update_us_stock.py` 用，代碼要大寫）
@@ -123,6 +124,33 @@ python3 update_us_news.py
 `run.sh` 已經把這支接在排程裡（`update_us_stock.py` 之後、`send_news_email.py`
 之前），每天 8:00 會自動更新。`send_news_email.py` 寄出的信也會多一段「美股新聞」，
 跟「台股新聞」在同一封信裡。
+
+## 股價交叉比對
+
+`validate_prices.py`：
+
+```
+python3 validate_prices.py
+```
+
+把 `data/`（台股）、`us_data/`（美股）裡每支股票**最新一筆**收盤價，拿去跟
+**Yahoo Finance**（不需要API key）同一天的收盤價核對，抓出兩邊落差異常的股票，
+分兩種情況：
+
+- **價格異常**：同一天的收盤價，本地跟 Yahoo 差距超過門檻（預設 1.5%，可用
+  `.env.local` 的 `PRICE_DIFF_THRESHOLD_PCT` 調整）——可能是 FinMind 資料有誤，
+  也可能除權息等因素造成短暫落差，建議人工確認，不代表哪邊一定是對的
+- **資料不同步**：兩邊「最新一筆」的日期對不上（例如本地還停在上週五，Yahoo 已經
+  有這週一的資料）——通常是本地資料還沒更新到最新，不是價格錯誤
+
+有發現異常時會寫進 `price_validation_report.txt`，`send_news_email.py` /
+`send_news_email_resend.py` 寄信時會自動讀取，把警示放在信件最前面；沒有異常
+的話這個檔案會被自動刪除、信件也不會有這段。`run.sh`、GitHub Actions 的
+`daily.yml` 都已經接好這一步，會在寄信前自動執行。
+
+新聞的交叉比對則是靠現有的「標題相似新聞統合」機制：同一件事被多家媒體報導時，
+信件裡會顯示「共幾篇報導、來源有哪些」，本身就是一種多方交叉驗證的呈現方式，
+不另外疊加標記。
 
 ## 每日新聞 Email
 
