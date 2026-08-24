@@ -31,7 +31,8 @@
 
 設定（.env.local，跟其他腳本共用同一份）：
     EMAIL_FROM=hsunweiai@gmail.com          (必填，寄件人；需已加入 Mail.app 帳號)
-    EMAIL_TO=hsunweiai@gmail.com             (必填，收件人)
+    EMAIL_TO=hsunweiai@gmail.com             (必填，收件人；要同時寄給多人，用逗號
+                                              分隔，例如 a@gmail.com,b@company.com)
     NEWS_OUTPUT_DIR=news                    (選填，預設 ./news，需跟 update_news.py 一致)
     STOCK_LIST_FILE=stock_list.txt          (選填，預設 ./stock_list.txt，台股清單)
     US_NEWS_OUTPUT_DIR=us_news              (選填，預設 ./us_news，需跟 update_us_news.py 一致)

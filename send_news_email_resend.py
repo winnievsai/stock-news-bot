@@ -14,7 +14,8 @@
     RESEND_API_KEY=你的Resend API Key      (必填，在 resend.com 申請帳號後取得)
     EMAIL_FROM=onboarding@resend.dev        (選填，預設用 Resend 提供的測試寄件地址；
                                               之後想用自己網域寄信可以另外設定)
-    EMAIL_TO=收件人地址                      (必填)
+    EMAIL_TO=收件人地址                      (必填；要同時寄給多人，用逗號分隔，
+                                              例如 a@gmail.com,b@company.com)
     NEWS_OUTPUT_DIR=news                    (選填，預設 ./news)
     STOCK_LIST_FILE=stock_list.txt          (選填，預設 ./stock_list.txt，台股清單)
     US_NEWS_OUTPUT_DIR=us_news              (選填，預設 ./us_news)
@@ -226,11 +227,11 @@ def build_news_section(section_title: str, stocks, news_dir: Path, today: str, m
     return "\n".join(lines), total
 
 
-def send_via_resend(api_key: str, email_from: str, email_to: str, subject: str, body: str):
+def send_via_resend(api_key: str, email_from: str, email_to_list: list, subject: str, body: str):
     resp = requests.post(
         "https://api.resend.com/emails",
         headers={"Authorization": f"Bearer {api_key}"},
-        json={"from": email_from, "to": [email_to], "subject": subject, "text": body},
+        json={"from": email_from, "to": email_to_list, "subject": subject, "text": body},
         timeout=30,
     )
     if resp.status_code >= 300:
@@ -263,8 +264,9 @@ def main():
     body = f"股票新聞日報 - {today}\n\n{price_warning}{tw_body}\n{us_body}"
     subject = f"股票新聞日報 {today}（台股 {tw_total} 則 / 美股 {us_total} 則）"
 
-    print(f"寄送對象：{email_to}，台股 {tw_total} 則、美股 {us_total} 則")
-    send_via_resend(resend_api_key, email_from, email_to, subject, body)
+    email_to_list = [addr.strip() for addr in email_to.split(",") if addr.strip()]
+    print(f"寄送對象：{', '.join(email_to_list)}，台股 {tw_total} 則、美股 {us_total} 則")
+    send_via_resend(resend_api_key, email_from, email_to_list, subject, body)
     print("已寄出。")
 
 
