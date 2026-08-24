@@ -1,0 +1,28 @@
+# 每行一個美股代碼（大寫），井字號開頭的行會被忽略
+SKHY
+LITE
+AAOI
+LEU
+CCJ
+QQQ
+TSM
+NVDA
+MRVL
+TSLA
+SPCX
+AVGO
+MU
+GOOG
+MSFT
+PLTR
+AMD
+AMZN
+ORCL
+# BRK.B：FinMind USStockPrice 目前查不到這檔的股價（BRK.B/BRK-B/BRKB 都是0筆，
+# BRK/B 因代碼含斜線被API拒絕），保留紀錄但暫時抓不到資料
+BRK.B
+AAPL
+GLW
+NOK
+META
+QCOM
