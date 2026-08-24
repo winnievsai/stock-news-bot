@@ -21,6 +21,9 @@
     US_NEWS_OUTPUT_DIR=us_news              (選填，預設 ./us_news)
     US_STOCK_LIST_FILE=us_stock_list.txt    (選填，預設 ./us_stock_list.txt，美股清單)
     MAX_NEWS_PER_STOCK=8                    (選填，預設 8)
+    MARKET_NEWS_OUTPUT_DIR=market_news      (選填，預設 ./market_news，需跟
+                                              update_market_news.py 一致)
+    MAX_MARKET_NEWS=10                      (選填，預設 10；大盤新聞信件裡最多列幾則)
 
 其餘邏輯（可信來源白名單、標題相似新聞統合、美股標題翻譯）都跟 send_news_email.py
 完全相同，說明請參考該檔案開頭的註解。
@@ -38,6 +41,7 @@ import requests
 
 SIMILARITY_THRESHOLD = 0.5
 DEFAULT_MAX_NEWS_PER_STOCK = 8
+DEFAULT_MAX_MARKET_NEWS = 10
 DEFAULT_EMAIL_FROM = "onboarding@resend.dev"
 
 TW_CREDIBLE_SOURCES = {
@@ -108,12 +112,21 @@ def load_config():
     stock_list_file = SCRIPT_DIR / env.get("STOCK_LIST_FILE", "stock_list.txt").strip()
     us_news_dir = SCRIPT_DIR / env.get("US_NEWS_OUTPUT_DIR", "us_news").strip()
     us_stock_list_file = SCRIPT_DIR / env.get("US_STOCK_LIST_FILE", "us_stock_list.txt").strip()
+    market_news_dir = SCRIPT_DIR / env.get("MARKET_NEWS_OUTPUT_DIR", "market_news").strip()
     try:
         max_per_stock = int(env.get("MAX_NEWS_PER_STOCK", DEFAULT_MAX_NEWS_PER_STOCK))
     except ValueError:
         max_per_stock = DEFAULT_MAX_NEWS_PER_STOCK
+    try:
+        max_market_news = int(env.get("MAX_MARKET_NEWS", DEFAULT_MAX_MARKET_NEWS))
+    except ValueError:
+        max_market_news = DEFAULT_MAX_MARKET_NEWS
 
-    return resend_api_key, email_from, email_to, news_dir, stock_list_file, us_news_dir, us_stock_list_file, max_per_stock
+    return (
+        resend_api_key, email_from, email_to,
+        news_dir, stock_list_file, us_news_dir, us_stock_list_file,
+        market_news_dir, max_per_stock, max_market_news,
+    )
 
 
 def load_stock_list(path: Path):
@@ -227,6 +240,39 @@ def build_news_section(section_title: str, stocks, news_dir: Path, today: str, m
     return "\n".join(lines), total
 
 
+def build_market_news_section(section_title: str, csv_path: Path, today: str, max_items: int = 0, credible_sources: set = None, translate: bool = False):
+    lines = [f"== {section_title} ==", ""]
+    total = 0
+    rows = load_today_news(csv_path, today)
+    if credible_sources is not None:
+        rows = [r for r in rows if r.get("source", "").strip() in credible_sources]
+    if not rows:
+        lines.append("（今日無新聞）")
+    else:
+        groups = cluster_similar_news(rows)
+        shown_groups = groups[:max_items] if max_items else groups
+        for group in shown_groups:
+            rep = group[0]
+            title = rep.get("title", "").strip()
+            link = rep.get("link", "").strip()
+            if translate:
+                title = translate_to_zh_tw(title)
+                time.sleep(0.3)
+            if len(group) > 1:
+                sources = list(dict.fromkeys(r.get("source", "").strip() for r in group if r.get("source", "").strip()))
+                shown = "、".join(sources[:5]) + ("等" if len(sources) > 5 else "")
+                lines.append(f"- {title}（共{len(group)}篇報導：{shown}）")
+            else:
+                lines.append(f"- {title}（{rep.get('source', '').strip()}）")
+            lines.append(f"  {link}")
+            total += 1
+        hidden = len(groups) - len(shown_groups)
+        if hidden > 0:
+            lines.append(f"…還有 {hidden} 則較舊的新聞未列出（完整記錄在 {csv_path.name}）")
+    lines.append("")
+    return "\n".join(lines), total
+
+
 def send_via_resend(api_key: str, email_from: str, email_to_list: list, subject: str, body: str):
     resp = requests.post(
         "https://api.resend.com/emails",
@@ -250,22 +296,39 @@ def load_price_validation_warning() -> str:
 def main():
     (
         resend_api_key, email_from, email_to,
-        news_dir, stock_list_file, us_news_dir, us_stock_list_file, max_per_stock,
+        news_dir, stock_list_file, us_news_dir, us_stock_list_file,
+        market_news_dir, max_per_stock, max_market_news,
     ) = load_config()
     stocks = load_stock_list(stock_list_file)
     us_stocks = load_stock_list(us_stock_list_file)
     today = date.today().isoformat()
 
     price_warning = load_price_validation_warning()
-    tw_body, tw_total = build_news_section("台股新聞", stocks, news_dir, today, max_per_stock, TW_CREDIBLE_SOURCES, translate=False)
-    print("翻譯美股新聞標題...")
-    us_body, us_total = build_news_section("美股新聞", us_stocks, us_news_dir, today, max_per_stock, US_CREDIBLE_SOURCES, translate=True)
+    tw_market_body, tw_market_total = build_market_news_section(
+        "台股大盤新聞", market_news_dir / "tw.csv", today, max_market_news, TW_CREDIBLE_SOURCES, translate=False
+    )
+    print("翻譯美股大盤新聞標題...")
+    us_market_body, us_market_total = build_market_news_section(
+        "美股大盤新聞", market_news_dir / "us.csv", today, max_market_news, US_CREDIBLE_SOURCES, translate=True
+    )
+    tw_body, tw_total = build_news_section("台股個股新聞", stocks, news_dir, today, max_per_stock, TW_CREDIBLE_SOURCES, translate=False)
+    print("翻譯美股個股新聞標題...")
+    us_body, us_total = build_news_section("美股個股新聞", us_stocks, us_news_dir, today, max_per_stock, US_CREDIBLE_SOURCES, translate=True)
 
-    body = f"股票新聞日報 - {today}\n\n{price_warning}{tw_body}\n{us_body}"
-    subject = f"股票新聞日報 {today}（台股 {tw_total} 則 / 美股 {us_total} 則）"
+    body = (
+        f"股票新聞日報 - {today}\n\n{price_warning}"
+        f"{tw_market_body}\n{us_market_body}\n{tw_body}\n{us_body}"
+    )
+    subject = (
+        f"股票新聞日報 {today}（大盤 {tw_market_total + us_market_total} 則 / "
+        f"台股 {tw_total} 則 / 美股 {us_total} 則）"
+    )
 
     email_to_list = [addr.strip() for addr in email_to.split(",") if addr.strip()]
-    print(f"寄送對象：{', '.join(email_to_list)}，台股 {tw_total} 則、美股 {us_total} 則")
+    print(
+        f"寄送對象：{', '.join(email_to_list)}，"
+        f"大盤 {tw_market_total + us_market_total} 則、台股 {tw_total} 則、美股 {us_total} 則"
+    )
     send_via_resend(resend_api_key, email_from, email_to_list, subject, body)
     print("已寄出。")
 
