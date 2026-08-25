@@ -79,6 +79,7 @@ TW_CREDIBLE_SOURCES = {
     "風傳媒", "storm.mg",
     "壹蘋新聞網", "Newtalk新聞",
     "MoneyDJ", "news.cnyes.com",
+    "TechNews 科技新報", "technews.tw",
     "Yahoo股市", "tw.stock.yahoo.com", "Yahoo新聞", "tw.news.yahoo.com",
 }
 
