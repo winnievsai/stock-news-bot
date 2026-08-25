@@ -44,6 +44,9 @@ jobs:
       - name: Update market-wide news
         run: python3 update_market_news.py
 
+      - name: Update Pocket Securities news
+        run: python3 update_pocket_news.py
+
       - name: Cross-check prices against Yahoo Finance
         run: python3 validate_prices.py
 
@@ -51,6 +54,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data news us_data us_news market_news
+          git add data news us_data us_news market_news pocket_news
           git commit -m "Fetch data update" || echo "No changes to commit"
           git push

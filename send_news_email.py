@@ -81,6 +81,7 @@ TW_CREDIBLE_SOURCES = {
     "MoneyDJ", "news.cnyes.com",
     "TechNews 科技新報", "technews.tw",
     "Yahoo股市", "tw.stock.yahoo.com", "Yahoo新聞", "tw.news.yahoo.com",
+    "口袋證券｜口袋學堂",
 }
 
 US_CREDIBLE_SOURCES = {
@@ -133,6 +134,7 @@ def load_config():
     us_news_dir = SCRIPT_DIR / env.get("US_NEWS_OUTPUT_DIR", "us_news").strip()
     us_stock_list_file = SCRIPT_DIR / env.get("US_STOCK_LIST_FILE", "us_stock_list.txt").strip()
     market_news_dir = SCRIPT_DIR / env.get("MARKET_NEWS_OUTPUT_DIR", "market_news").strip()
+    pocket_news_dir = SCRIPT_DIR / env.get("POCKET_NEWS_OUTPUT_DIR", "pocket_news").strip()
     try:
         max_per_stock = int(env.get("MAX_NEWS_PER_STOCK", DEFAULT_MAX_NEWS_PER_STOCK))
     except ValueError:
@@ -144,7 +146,7 @@ def load_config():
 
     return (
         email_from, email_to, news_dir, stock_list_file, us_news_dir, us_stock_list_file,
-        market_news_dir, max_per_stock, max_market_news,
+        market_news_dir, pocket_news_dir, max_per_stock, max_market_news,
     )
 
 
@@ -314,7 +316,7 @@ def load_price_validation_warning() -> str:
 def main():
     (
         email_from, email_to, news_dir, stock_list_file, us_news_dir, us_stock_list_file,
-        market_news_dir, max_per_stock, max_market_news,
+        market_news_dir, pocket_news_dir, max_per_stock, max_market_news,
     ) = load_config()
     stocks = load_stock_list(stock_list_file)
     us_stocks = load_stock_list(us_stock_list_file)
@@ -328,22 +330,26 @@ def main():
     us_market_body, us_market_total = build_market_news_section(
         "美股大盤新聞", market_news_dir / "us.csv", today, max_market_news, US_CREDIBLE_SOURCES, translate=True
     )
+    pocket_body, pocket_total = build_market_news_section(
+        "口袋證券新聞", pocket_news_dir / "pocket.csv", today, max_market_news, TW_CREDIBLE_SOURCES, translate=False
+    )
     tw_body, tw_total = build_news_section("台股個股新聞", stocks, news_dir, today, max_per_stock, TW_CREDIBLE_SOURCES, translate=False)
     print("翻譯美股個股新聞標題...")
     us_body, us_total = build_news_section("美股個股新聞", us_stocks, us_news_dir, today, max_per_stock, US_CREDIBLE_SOURCES, translate=True)
 
     body = (
         f"股票新聞日報 - {today}\n\n{price_warning}"
-        f"{tw_market_body}\n{us_market_body}\n{tw_body}\n{us_body}"
+        f"{tw_market_body}\n{us_market_body}\n{pocket_body}\n{tw_body}\n{us_body}"
     )
     subject = (
         f"股票新聞日報 {today}（大盤 {tw_market_total + us_market_total} 則 / "
-        f"台股 {tw_total} 則 / 美股 {us_total} 則）"
+        f"口袋證券 {pocket_total} 則 / 台股 {tw_total} 則 / 美股 {us_total} 則）"
     )
 
     print(
         f"寄送對象：{email_to}，"
-        f"大盤 {tw_market_total + us_market_total} 則、台股 {tw_total} 則、美股 {us_total} 則"
+        f"大盤 {tw_market_total + us_market_total} 則、口袋證券 {pocket_total} 則、"
+        f"台股 {tw_total} 則、美股 {us_total} 則"
     )
     send_via_mail_app(email_from, email_to, subject, body)
     print("已寄出。")
