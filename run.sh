@@ -14,4 +14,6 @@ python3 update_finmind.py
 python3 update_news.py
 python3 update_us_stock.py
 python3 update_us_news.py
+python3 update_market_news.py
+python3 validate_prices.py
 python3 send_news_email.py

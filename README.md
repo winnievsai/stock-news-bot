@@ -6,6 +6,7 @@
 - `update_news.py`　抓「個股新聞」的程式，用法跟 `update_finmind.py` 一樣（見下方「抓取個股新聞」）
 - `update_us_stock.py`　抓「美股股價」的程式（見下方「抓取美股股價」）
 - `update_us_news.py`　抓「美股新聞」的程式（見下方「抓取美股新聞」）
+- `update_market_news.py`　抓「台股/美股大盤（市場整體）新聞」的程式，不綁定特定股票（見下方「抓取大盤新聞」）
 - `validate_prices.py`　拿 Yahoo Finance 的股價交叉核對本地資料（見下方「股價交叉比對」）
 - `send_news_email.py`　把當天新抓到的新聞寄成一封 email（見下方「每日新聞 Email」）
 - `stock_list.txt`　你要追蹤的**台股**代碼清單，一行一個（`update_finmind.py`、`update_news.py` 共用）
@@ -15,6 +16,7 @@
 - `news/`　每支台股一個新聞 CSV，例如 `news/2330.csv`（欄位：日期時間、股票代碼、標題、來源、連結）
 - `us_data/`　每支美股一個股價 CSV，例如 `us_data/AAPL.csv`
 - `us_news/`　每支美股一個新聞 CSV，例如 `us_news/AAPL.csv`（資料來源：Google News RSS）
+- `market_news/`　`tw.csv`（台股大盤新聞）、`us.csv`（美股大盤新聞），不綁定特定股票代碼
 - `requirements.txt`　Python 套件需求（只需要 `requests`）
 
 ## 第一次使用
@@ -124,6 +126,26 @@ python3 update_us_news.py
 `run.sh` 已經把這支接在排程裡（`update_us_stock.py` 之後、`send_news_email.py`
 之前），每天 8:00 會自動更新。`send_news_email.py` 寄出的信也會多一段「美股新聞」，
 跟「台股新聞」在同一封信裡。
+
+## 抓取大盤新聞
+
+`update_market_news.py`：
+
+```
+python3 update_market_news.py
+```
+
+跟 `update_us_news.py` 一樣用 **Google News RSS**（不需要API key），差別是**不綁定
+任何股票代碼**，查的是「台股大盤」「美股大盤」整體市場新聞，存到 `market_news/tw.csv`、
+`market_news/us.csv`。適合想看大盤走勢、總經事件（例如聯準會決策、台股加權指數）這種
+不屬於單一個股的新聞。
+
+- 跟 `update_us_news.py` 一樣，每次只抓「最近1天」，沒有歷史區間查詢，靠每天執行、
+  用連結去重累積歷史記錄
+- `send_news_email.py` / `send_news_email_resend.py` 寄信時會把大盤新聞放在信件
+  最前面（「台股大盤新聞」「美股大盤新聞」兩段），一樣套用可信來源白名單、標題統合、
+  美股標題翻譯的規則，跟個股新聞的處理邏輯一致
+- `run.sh`、GitHub Actions 的 `daily.yml` 都已經接好這一步
 
 ## 股價交叉比對
 
