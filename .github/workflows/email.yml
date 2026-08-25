@@ -1,0 +1,25 @@
+name: Send News Digest
+
+on:
+  schedule:
+    - cron: "15 */4 * * *"   # 每 4 小時、錯開 15 分鐘，確保 fetch.yml 那輪已經跑完最新資料
+  workflow_dispatch: {}       # 允許在 Actions 分頁手動點按鈕測試
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send daily digest email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python3 send_news_email_resend.py
