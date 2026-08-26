@@ -2,7 +2,10 @@ name: Fetch Stock Data
 
 on:
   schedule:
-    - cron: "0 */2 * * *"   # 每 2 小時（UTC），跟台灣時間差 8 小時
+    - cron: "0 16 * * *"   # 台灣時間 00:00
+    - cron: "0 22 * * *"   # 台灣時間 06:00（在 06:15 寄信之前留緩衝）
+    - cron: "0 4 * * *"    # 台灣時間 12:00
+    - cron: "0 10 * * *"   # 台灣時間 18:00（在 19:15 寄信之前留緩衝）
   workflow_dispatch: {}      # 允許在 Actions 分頁手動點按鈕測試
 
 permissions:
