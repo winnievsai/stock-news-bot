@@ -44,7 +44,7 @@ CATEGORIES = ("SB", "newflash", "perspective")
 DEFAULT_BACKFILL_DAYS = 7
 DEFAULT_REQUEST_INTERVAL_SEC = 1
 CSV_PATH_NAME = "pocket.csv"
-CSV_FIELDS = ["date", "title", "source", "link"]
+CSV_FIELDS = ["日期", "標題", "來源", "連結"]
 
 URL_PATTERN = re.compile(
     r"<url><loc>(https://www\.pocket\.tw/school/report/(?:" + "|".join(CATEGORIES) + r")/\d+/)</loc><lastmod>([\d-]+)</lastmod>"
@@ -88,7 +88,7 @@ def read_last_date(csv_path: Path):
     with csv_path.open("r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            d = row.get("date")
+            d = row.get("日期")
             if d and (last is None or d > last):
                 last = d
     return last
@@ -128,16 +128,16 @@ def upsert_csv(csv_path: Path, new_rows: list):
         with csv_path.open("r", newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                existing[row.get("link", "")] = row
+                existing[row.get("連結", "")] = row
 
     for row in new_rows:
-        existing[row["link"]] = {k: row.get(k, "") for k in CSV_FIELDS}
+        existing[row["連結"]] = {k: row.get(k, "") for k in CSV_FIELDS}
 
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         writer.writeheader()
-        for key in sorted(existing.keys(), key=lambda k: existing[k].get("date", ""), reverse=True):
+        for key in sorted(existing.keys(), key=lambda k: existing[k].get("日期", ""), reverse=True):
             writer.writerow(existing[key])
 
 
@@ -157,7 +157,7 @@ def main():
     if csv_path.exists():
         with csv_path.open("r", newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
-                existing_links.add(row.get("link", ""))
+                existing_links.add(row.get("連結", ""))
 
     to_fetch = [
         (url, lastmod) for url, lastmod in entries
@@ -169,7 +169,7 @@ def main():
     for i, (url, lastmod) in enumerate(to_fetch, 1):
         title = fetch_article_title(url)
         if title:
-            new_rows.append({"date": lastmod, "title": title, "source": SOURCE_NAME, "link": url})
+            new_rows.append({"日期": lastmod, "標題": title, "來源": SOURCE_NAME, "連結": url})
             print(f"  [{i}/{len(to_fetch)}] {title[:40]}")
         if i < len(to_fetch):
             time.sleep(request_interval)

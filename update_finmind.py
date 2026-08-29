@@ -36,9 +36,16 @@ DATASET = "TaiwanStockPrice"
 DEFAULT_BACKFILL_START = "2024-01-01"
 DEFAULT_REQUEST_INTERVAL_SEC = 6.5  # 保守估計，600 requests/hour 上限下留一些餘裕
 CSV_FIELDS = [
-    "date", "stock_id", "Trading_Volume", "Trading_money",
-    "open", "max", "min", "close", "spread", "Trading_turnover",
+    "日期", "股票代碼", "成交股數", "成交金額",
+    "開盤價", "最高價", "最低價", "收盤價", "漲跌價差", "成交筆數",
 ]
+# FinMind API 回傳的英文欄位名稱 -> CSV 裡的中文欄位名稱
+API_FIELD_MAP = {
+    "date": "日期", "stock_id": "股票代碼", "Trading_Volume": "成交股數",
+    "Trading_money": "成交金額", "open": "開盤價", "max": "最高價",
+    "min": "最低價", "close": "收盤價", "spread": "漲跌價差",
+    "Trading_turnover": "成交筆數",
+}
 MAX_RETRIES = 3
 
 
@@ -94,7 +101,7 @@ def read_last_date(csv_path: Path):
     with csv_path.open("r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            d = row.get("date")
+            d = row.get("日期")
             if d and (last is None or d > last):
                 last = d
     return last
@@ -139,16 +146,18 @@ def fetch_finmind(token: str, stock_id: str, start_date: str, end_date: str):
 
 
 def upsert_csv(csv_path: Path, new_rows: list):
-    """合併新資料到CSV，依日期去重、排序後整份改寫"""
+    """合併新資料到CSV，依日期去重、排序後整份改寫。new_rows 是 FinMind API 回傳的
+    原始資料（英文欄位名稱），寫入前會翻譯成中文欄位名稱"""
     existing = {}
     if csv_path.exists():
         with csv_path.open("r", newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                existing[row["date"]] = row
+                existing[row["日期"]] = row
 
     for row in new_rows:
-        existing[row["date"]] = {k: row.get(k, "") for k in CSV_FIELDS}
+        translated = {API_FIELD_MAP[k]: v for k, v in row.items() if k in API_FIELD_MAP}
+        existing[translated["日期"]] = {k: translated.get(k, "") for k in CSV_FIELDS}
 
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as f:

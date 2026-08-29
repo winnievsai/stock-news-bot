@@ -44,7 +44,9 @@ API_URL = "https://api.finmindtrade.com/api/v4/data"
 DATASET = "TaiwanStockNews"
 DEFAULT_BACKFILL_DAYS = 7
 DEFAULT_REQUEST_INTERVAL_SEC = 6.5  # 保守估計，600 requests/hour 上限下留一些餘裕
-CSV_FIELDS = ["date", "stock_id", "title", "source", "link"]
+CSV_FIELDS = ["日期", "股票代碼", "標題", "來源", "連結"]
+# FinMind API 回傳的英文欄位名稱 -> CSV 裡的中文欄位名稱
+API_FIELD_MAP = {"date": "日期", "stock_id": "股票代碼", "title": "標題", "source": "來源", "link": "連結"}
 MAX_RETRIES = 3
 
 
@@ -104,7 +106,7 @@ def read_last_date(csv_path: Path):
     with csv_path.open("r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            d = (row.get("date") or "")[:10]
+            d = (row.get("日期") or "")[:10]
             if d and (last is None or d > last):
                 last = d
     return last
@@ -148,24 +150,26 @@ def fetch_news_day(token: str, stock_id: str, day: str):
 
 
 def upsert_csv(csv_path: Path, new_rows: list):
-    """合併新資料到CSV，依新聞連結(link)去重、依日期排序後整份改寫"""
+    """合併新資料到CSV，依新聞連結(連結)去重、依日期排序後整份改寫。new_rows 是
+    FinMind API 回傳的原始資料（英文欄位名稱），寫入前會翻譯成中文欄位名稱"""
     existing = {}
     if csv_path.exists():
         with csv_path.open("r", newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                key = row.get("link") or row.get("date")
+                key = row.get("連結") or row.get("日期")
                 existing[key] = row
 
     for row in new_rows:
-        key = row.get("link") or row.get("date")
-        existing[key] = {k: row.get(k, "") for k in CSV_FIELDS}
+        translated = {API_FIELD_MAP[k]: v for k, v in row.items() if k in API_FIELD_MAP}
+        key = translated.get("連結") or translated.get("日期")
+        existing[key] = {k: translated.get(k, "") for k in CSV_FIELDS}
 
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         writer.writeheader()
-        for key in sorted(existing.keys(), key=lambda k: existing[k].get("date", ""), reverse=True):
+        for key in sorted(existing.keys(), key=lambda k: existing[k].get("日期", ""), reverse=True):
             writer.writerow(existing[key])
 
 

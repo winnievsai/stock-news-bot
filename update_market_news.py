@@ -21,6 +21,7 @@
 
 import csv
 import os
+import re
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -33,7 +34,40 @@ import requests
 SCRIPT_DIR = Path(__file__).resolve().parent
 RSS_URL = "https://news.google.com/rss/search"
 DEFAULT_REQUEST_INTERVAL_SEC = 2
-CSV_FIELDS = ["date", "market", "title", "source", "link"]
+CSV_FIELDS = ["日期", "市場", "標題", "來源", "連結"]
+
+TRANSLATE_QUOTA_EXHAUSTED = False  # 一旦MyMemory回傳429（今日額度用完），本次執行
+                                    # 就不再浪費時間呼叫API，標題先保留英文，之後
+                                    # 額度重置後下次執行會自動繼續翻
+
+
+def translate_to_zh_tw(text: str) -> str:
+    """用 MyMemory 免費翻譯 API（不需要API key）把英文標題翻成繁體中文；
+    翻譯失敗就回傳原文，不中斷整個流程。
+    （這個API每個IP每天有免費字數額度，用完要等隔天重置；試過改用Google Translate
+    的公開端點當替代，但那個端點對自動化查詢的IP封鎖更快更不穩定，所以維持用這個）"""
+    global TRANSLATE_QUOTA_EXHAUSTED
+    if not text or not re.search(r"[A-Za-z]", text):
+        return text  # 已經是中文或空字串，不用翻
+    if TRANSLATE_QUOTA_EXHAUSTED:
+        return text  # 本次執行已知額度用完，先保留英文，不用再等一次逾時/被拒
+    try:
+        resp = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": text, "langpair": "en|zh-TW"},
+            timeout=15,
+        )
+        if resp.status_code == 429:
+            TRANSLATE_QUOTA_EXHAUSTED = True
+            return text
+        resp.raise_for_status()
+        payload = resp.json()
+        translated = (payload.get("responseData") or {}).get("translatedText") or ""
+        translated = translated.strip()
+        return translated or text
+    except (requests.RequestException, ValueError, AttributeError):
+        return text
+
 
 # market 代號 -> (Google News 查詢字串, hl, gl, ceid)
 MARKETS = {
@@ -104,29 +138,32 @@ def fetch_market_news(market: str, query: str, hl: str, gl: str, ceid: str):
         except (TypeError, ValueError):
             date_str = pub_date_raw
 
-        rows.append({"date": date_str, "market": market, "title": title, "source": source, "link": link})
+        if market == "US":
+            title = translate_to_zh_tw(title)
+            time.sleep(0.3)  # 對免費翻譯API禮貌性地放慢速度
+        rows.append({"日期": date_str, "市場": market, "標題": title, "來源": source, "連結": link})
     return rows
 
 
 def upsert_csv(csv_path: Path, new_rows: list):
-    """合併新資料到CSV，依新聞連結(link)去重、依日期新到舊排序後整份改寫"""
+    """合併新資料到CSV，依新聞連結去重、依日期新到舊排序後整份改寫"""
     existing = {}
     if csv_path.exists():
         with csv_path.open("r", newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                key = row.get("link") or row.get("date")
+                key = row.get("連結") or row.get("日期")
                 existing[key] = row
 
     for row in new_rows:
-        key = row.get("link") or row.get("date")
+        key = row.get("連結") or row.get("日期")
         existing[key] = {k: row.get(k, "") for k in CSV_FIELDS}
 
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         writer.writeheader()
-        for key in sorted(existing.keys(), key=lambda k: existing[k].get("date", ""), reverse=True):
+        for key in sorted(existing.keys(), key=lambda k: existing[k].get("日期", ""), reverse=True):
             writer.writerow(existing[key])
 
 

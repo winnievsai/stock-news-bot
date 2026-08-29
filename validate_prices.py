@@ -87,8 +87,8 @@ def read_latest_close(csv_path: Path):
     with csv_path.open("r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            date = row.get("date")
-            close = row.get("close") or row.get("Close")
+            date = row.get("日期")
+            close = row.get("收盤價")
             if date and close:
                 try:
                     return date, float(close)
