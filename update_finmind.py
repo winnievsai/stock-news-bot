@@ -79,6 +79,8 @@ def load_config():
 
 
 def load_stock_list(path: Path):
+    """回傳 [(股票代碼, 中文名稱), ...]；清單檔案格式是「代碼 中文名稱」，
+    中文名稱用來組CSV檔名（例如 3008_大立光.csv），沒填名稱就用代碼本身代替"""
     if not path.exists():
         sys.exit(f"[錯誤] 找不到股票清單檔案：{path}")
     stocks = []
@@ -86,11 +88,17 @@ def load_stock_list(path: Path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        code = line.split()[0]
-        stocks.append(code)
+        parts = line.split(maxsplit=1)
+        code = parts[0]
+        name = parts[1].strip() if len(parts) > 1 else code
+        stocks.append((code, name))
     if not stocks:
         sys.exit(f"[錯誤] {path} 內沒有任何股票代碼")
     return stocks
+
+
+def csv_filename(stock_id: str, name: str) -> str:
+    return f"{stock_id}_{name}.csv"
 
 
 def read_last_date(csv_path: Path):
@@ -176,8 +184,8 @@ def main():
     print(f"預設回補起始日：{backfill_start}，抓取到：{today}\n")
 
     stopped_due_to_limit = False
-    for i, stock_id in enumerate(stocks, 1):
-        csv_path = output_dir / f"{stock_id}.csv"
+    for i, (stock_id, name) in enumerate(stocks, 1):
+        csv_path = output_dir / csv_filename(stock_id, name)
         last_date = read_last_date(csv_path)
 
         if last_date is None:

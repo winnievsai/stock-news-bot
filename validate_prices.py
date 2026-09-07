@@ -69,6 +69,7 @@ def load_config():
 
 
 def load_stock_list(path: Path):
+    """回傳 [(股票代碼, 中文名稱), ...]；中文名稱用來組CSV檔名（例如 3008_大立光.csv）"""
     if not path.exists():
         return []
     stocks = []
@@ -76,8 +77,15 @@ def load_stock_list(path: Path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        stocks.append(line.split()[0])
+        parts = line.split(maxsplit=1)
+        code = parts[0]
+        name = parts[1].strip() if len(parts) > 1 else code
+        stocks.append((code, name))
     return stocks
+
+
+def csv_filename(stock_id: str, name: str) -> str:
+    return f"{stock_id}_{name}.csv"
 
 
 def read_latest_close(csv_path: Path):
@@ -172,16 +180,16 @@ def main():
     findings = []
 
     print(f"核對 {len(tw_stocks)} 檔台股價格（門檻 {threshold}%）...")
-    for stock_id in tw_stocks:
-        result = check_stock(stock_id, output_dir / f"{stock_id}.csv", f"{stock_id}.TW", threshold)
+    for stock_id, name in tw_stocks:
+        result = check_stock(stock_id, output_dir / csv_filename(stock_id, name), f"{stock_id}.TW", threshold)
         if result:
             findings.append(result)
         time.sleep(0.5)
 
     print(f"核對 {len(us_stocks)} 檔美股價格（門檻 {threshold}%）...")
-    for stock_id in us_stocks:
+    for stock_id, name in us_stocks:
         yahoo_symbol = US_SYMBOL_OVERRIDES.get(stock_id, stock_id)
-        result = check_stock(stock_id, us_output_dir / f"{stock_id}.csv", yahoo_symbol, threshold)
+        result = check_stock(stock_id, us_output_dir / csv_filename(stock_id, name), yahoo_symbol, threshold)
         if result:
             findings.append(result)
         time.sleep(0.5)

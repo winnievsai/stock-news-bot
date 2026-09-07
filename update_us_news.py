@@ -122,6 +122,10 @@ def load_config():
 
 
 def load_stock_list(path: Path):
+    """回傳 [(股票代碼, 中文名稱), ...]；清單檔案格式是「代碼 中文名稱」，
+    中文名稱用來組CSV檔名（例如 NVDA_輝達.csv），沒填名稱就用代碼本身代替。
+    這裡的中文名稱只用來組檔名，跟 fetch_company_names() 查到的英文公司全名
+    （用來過濾不相關新聞）是兩回事，不要搞混"""
     if not path.exists():
         sys.exit(f"[錯誤] 找不到股票清單檔案：{path}")
     stocks = []
@@ -129,11 +133,17 @@ def load_stock_list(path: Path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        code = line.split()[0].upper()
-        stocks.append(code)
+        parts = line.split(maxsplit=1)
+        code = parts[0].upper()
+        name = parts[1].strip() if len(parts) > 1 else code
+        stocks.append((code, name))
     if not stocks:
         sys.exit(f"[錯誤] {path} 內沒有任何股票代碼")
     return stocks
+
+
+def csv_filename(stock_id: str, name: str) -> str:
+    return f"{stock_id}_{name}.csv"
 
 
 def fetch_company_names(token: str, stock_ids: list) -> dict:
@@ -254,21 +264,22 @@ def upsert_csv(csv_path: Path, new_rows: list):
 def main():
     token, output_dir, stock_list_file, request_interval = load_config()
     stocks = load_stock_list(stock_list_file)
+    stock_ids = [code for code, _ in stocks]
     today = date.today().isoformat()
 
     print(f"共 {len(stocks)} 檔美股，輸出資料夾：{output_dir}（資料來源：Google News RSS）")
     print("查詢公司名稱以過濾不相關新聞...")
-    company_names = fetch_company_names(token, stocks)
-    keywords_by_stock = {sid: extract_keywords(company_names.get(sid, "")) for sid in stocks}
+    company_names = fetch_company_names(token, stock_ids)
+    keywords_by_stock = {sid: extract_keywords(company_names.get(sid, "")) for sid in stock_ids}
     print()
 
-    for i, stock_id in enumerate(stocks, 1):
+    for i, (stock_id, zh_name) in enumerate(stocks, 1):
         keywords = keywords_by_stock.get(stock_id, [])
         name_hint = company_names.get(stock_id, "")
         print(f"[{i}/{len(stocks)}] {stock_id}（{name_hint or '公司名稱未知'}）：抓取最近新聞")
         rows = fetch_us_news(stock_id, keywords)
         if rows:
-            csv_path = output_dir / f"{stock_id}.csv"
+            csv_path = output_dir / csv_filename(stock_id, zh_name)
             upsert_csv(csv_path, rows)
             print(f"    抓到 {len(rows)} 筆（含新舊，已用連結去重合併）")
         else:

@@ -9,13 +9,13 @@
 - `update_market_news.py`　抓「台股/美股大盤（市場整體）新聞」的程式，不綁定特定股票（見下方「抓取大盤新聞」）
 - `validate_prices.py`　拿 Yahoo Finance 的股價交叉核對本地資料（見下方「股價交叉比對」）
 - `send_news_email.py`　把當天新抓到的新聞寄成一封 email（見下方「每日新聞 Email」）
-- `stock_list.txt`　你要追蹤的**台股**代碼清單，一行一個（`update_finmind.py`、`update_news.py` 共用）
-- `us_stock_list.txt`　你要追蹤的**美股**代碼清單，一行一個（`update_us_stock.py` 用，代碼要大寫）
+- `stock_list.txt`　你要追蹤的**台股**代碼清單，每行「代碼 中文名稱」（`update_finmind.py`、`update_news.py` 共用）
+- `us_stock_list.txt`　你要追蹤的**美股**代碼清單，每行「代碼 中文名稱」（`update_us_stock.py` 用，代碼要大寫）
 - `.env.local`　放你的 FinMind API token（**不要分享或上傳到公開地方**）
-- `data/`　每支台股一個股價 CSV，例如 `data/2330.csv`
-- `news/`　每支台股一個新聞 CSV，例如 `news/2330.csv`（欄位：日期時間、股票代碼、標題、來源、連結）
-- `us_data/`　每支美股一個股價 CSV，例如 `us_data/AAPL.csv`
-- `us_news/`　每支美股一個新聞 CSV，例如 `us_news/AAPL.csv`（資料來源：Google News RSS）
+- `data/`　每支台股一個股價 CSV，檔名是「代碼_中文名稱.csv」，例如 `data/2330_台積電.csv`
+- `news/`　每支台股一個新聞 CSV，例如 `news/2330_台積電.csv`（欄位：日期時間、股票代碼、標題、來源、連結）
+- `us_data/`　每支美股一個股價 CSV，檔名是「代碼_中文名稱.csv」，例如 `us_data/AAPL_蘋果.csv`
+- `us_news/`　每支美股一個新聞 CSV，例如 `us_news/AAPL_蘋果.csv`（資料來源：Google News RSS）
 - `market_news/`　`tw.csv`（台股大盤新聞）、`us.csv`（美股大盤新聞），不綁定特定股票代碼
 - `requirements.txt`　Python 套件需求（只需要 `requests`）
 
@@ -61,7 +61,7 @@ python3 update_news.py
 ```
 
 會讀同一份 `stock_list.txt`、同一組 `FINMIND_TOKEN`，把每支股票的新聞存到
-`news/<股票代碼>.csv`。跟股價不同的是，FinMind 的新聞 API 一次只能查「一天」，
+`news/<代碼>_<中文名稱>.csv`。跟股價不同的是，FinMind 的新聞 API 一次只能查「一天」，
 所以：
 
 - **第一次執行**：只會回補「今天往前 7 天」的新聞（可用 `NEWS_BACKFILL_DAYS` 調整），
@@ -83,7 +83,7 @@ python3 update_us_stock.py
 ```
 
 會讀 `us_stock_list.txt`、同一組 `FINMIND_TOKEN`，把每支美股的股價存到
-`us_data/<代碼>.csv`，增量續抓、CSV新到舊排序，跟台股股價邏輯完全相同。
+`us_data/<代碼>_<中文名稱>.csv`，增量續抓、CSV新到舊排序，跟台股股價邏輯完全相同。
 
 **已知限制：**
 
@@ -105,7 +105,7 @@ python3 update_us_news.py
 ```
 
 會讀 `us_stock_list.txt`，用 **Google News RSS**（不需要申請任何 API key）查每支美股
-最近的新聞，存到 `us_news/<代碼>.csv`（欄位：日期時間、股票代碼、標題、來源、連結）。
+最近的新聞，存到 `us_news/<代碼>_<中文名稱>.csv`（欄位：日期時間、股票代碼、標題、來源、連結）。
 
 **跟台股新聞（FinMind）不一樣的地方：**
 

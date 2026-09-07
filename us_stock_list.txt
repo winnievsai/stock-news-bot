@@ -1,28 +1,29 @@
-# 每行一個美股代碼（大寫），井字號開頭的行會被忽略
-SKHY
-LITE
-AAOI
-LEU
-CCJ
-QQQ
-TSM
-NVDA
-MRVL
-TSLA
-SPCX
-AVGO
-MU
-GOOG
-MSFT
-PLTR
-AMD
-AMZN
-ORCL
+# 每行「股票代碼 中文名稱」（大寫代碼），井字號開頭的行會被忽略
+# 中文名稱用於CSV檔名（例如 NVDA_輝達.csv），也會顯示在信件裡
+SKHY SK海力士
+LITE 朗美通
+AAOI 應用光電
+LEU 世創能源
+CCJ 卡麥科
+QQQ 納斯達克100ETF
+TSM 台積電ADR
+NVDA 輝達
+MRVL 邁威爾
+TSLA 特斯拉
+SPCX SPAC新股ETF
+AVGO 博通
+MU 美光
+GOOG Alphabet
+MSFT 微軟
+PLTR 帕蘭泰爾
+AMD 超微
+AMZN 亞馬遜
+ORCL 甲骨文
 # BRK.B：FinMind USStockPrice 目前查不到這檔的股價（BRK.B/BRK-B/BRKB 都是0筆，
 # BRK/B 因代碼含斜線被API拒絕），保留紀錄但暫時抓不到資料
-BRK.B
-AAPL
-GLW
-NOK
-META
-QCOM
+BRK.B 波克夏B
+AAPL 蘋果
+GLW 康寧
+NOK 諾基亞
+META Meta
+QCOM 高通

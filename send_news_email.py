@@ -151,7 +151,8 @@ def load_config():
 
 
 def load_stock_list(path: Path):
-    """讀股票清單；找不到檔案時回傳空清單（美股清單缺少不應該讓台股新聞信寄不出去）"""
+    """讀股票清單，回傳 [(代碼, 中文名稱), ...]；找不到檔案時回傳空清單（美股清單
+    缺少不應該讓台股新聞信寄不出去）。中文名稱用來組CSV檔名（例如 3008_大立光.csv）"""
     if not path.exists():
         return []
     stocks = []
@@ -159,9 +160,15 @@ def load_stock_list(path: Path):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        code = line.split()[0]
-        stocks.append(code)
+        parts = line.split(maxsplit=1)
+        code = parts[0]
+        name = parts[1].strip() if len(parts) > 1 else code
+        stocks.append((code, name))
     return stocks
+
+
+def csv_filename(stock_id: str, name: str) -> str:
+    return f"{stock_id}_{name}.csv"
 
 
 def load_today_news(csv_path: Path, today: str):
@@ -243,12 +250,12 @@ def translate_to_zh_tw(text: str) -> str:
 def build_news_section(section_title: str, stocks, news_dir: Path, today: str, max_per_stock: int = 0, credible_sources: set = None, translate: bool = False):
     lines = [f"== {section_title} ==", ""]
     total = 0
-    for stock_id in stocks:
-        csv_path = news_dir / f"{stock_id}.csv"
+    for stock_id, name in stocks:
+        csv_path = news_dir / csv_filename(stock_id, name)
         rows = load_today_news(csv_path, today)
         if credible_sources is not None:
             rows = [r for r in rows if r.get("來源", "").strip() in credible_sources]
-        lines.append(f"【{stock_id}】")
+        lines.append(f"【{stock_id} {name}】")
         if not rows:
             lines.append("  （今日無新聞）")
         else:
