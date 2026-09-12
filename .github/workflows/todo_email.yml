@@ -1,0 +1,25 @@
+name: Send Todo Reminder Email
+
+on:
+  schedule:
+    - cron: "15 23 * * *"   # 台灣時間 07:15
+  workflow_dispatch: {}       # 允許在 Actions 分頁手動點按鈕測試
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send daily todo reminder email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python3 send_todo_email_resend.py
